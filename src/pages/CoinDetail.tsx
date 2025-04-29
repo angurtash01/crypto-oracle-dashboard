@@ -4,6 +4,15 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchCoinData, fetchCoinHistory } from '../services/api';
 import { formatCurrency, formatPercentage, formatDate } from '../utils/formatters';
 import { Loader, ArrowLeft } from 'lucide-react';
+import PatternDetector from '../components/PatternDetector';
+import MarketTrendIndicator from '../components/MarketTrendIndicator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent
+} from '../components/ui/chart';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // This would be replaced with proper Chart.js implementation
 const PricePlaceholder = ({ data }: { data: any[] }) => {
@@ -47,6 +56,7 @@ const CoinDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState('7d');
+  const [analysisTab, setAnalysisTab] = useState<'overview' | 'patterns' | 'trend'>('overview');
 
   useEffect(() => {
     const loadCoinData = async () => {
@@ -102,7 +112,9 @@ const CoinDetail = () => {
     );
   }
 
-  const priceChangeIsPositive = coin.price_change_percentage_24h >= 0;
+  const priceChangeIsPositive = coin.market_data.price_change_percentage_24h >= 0;
+  const priceData = history.map(point => point[1]);
+  const volumeData = Array(priceData.length).fill(coin.market_data.total_volume.usd / priceData.length); // Mock volume data
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -141,60 +153,82 @@ const CoinDetail = () => {
         </div>
         
         <PricePlaceholder data={history} />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-card rounded-lg p-6 border border-border/40">
-          <h2 className="text-lg font-semibold mb-4">Market Stats</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Market Cap</span>
-              <span className="font-medium">{formatCurrency(coin.market_data.market_cap.usd)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Volume (24h)</span>
-              <span className="font-medium">{formatCurrency(coin.market_data.total_volume.usd)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Circulating Supply</span>
-              <span className="font-medium">{coin.market_data.circulating_supply.toLocaleString()} {coin.symbol.toUpperCase()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Max Supply</span>
-              <span className="font-medium">{coin.market_data.max_supply ? coin.market_data.max_supply.toLocaleString() : 'N/A'}</span>
-            </div>
-          </div>
-        </div>
         
-        <div className="bg-card rounded-lg p-6 border border-border/40">
-          <h2 className="text-lg font-semibold mb-4">Price Change</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">24h</span>
-              <span className={coin.market_data.price_change_percentage_24h >= 0 ? 'text-gain' : 'text-loss'}>
-                {formatPercentage(coin.market_data.price_change_percentage_24h)}
-              </span>
+        <Tabs value={analysisTab} onValueChange={(v) => setAnalysisTab(v as any)} className="mt-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="patterns">Pattern Detection</TabsTrigger>
+            <TabsTrigger value="trend">Market Trend</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="overview" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-card rounded-lg p-6 border border-border/40">
+                <h2 className="text-lg font-semibold mb-4">Market Stats</h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Market Cap</span>
+                    <span className="font-medium">{formatCurrency(coin.market_data.market_cap.usd)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Volume (24h)</span>
+                    <span className="font-medium">{formatCurrency(coin.market_data.total_volume.usd)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Circulating Supply</span>
+                    <span className="font-medium">{coin.market_data.circulating_supply.toLocaleString()} {coin.symbol.toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Max Supply</span>
+                    <span className="font-medium">{coin.market_data.max_supply ? coin.market_data.max_supply.toLocaleString() : 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-card rounded-lg p-6 border border-border/40">
+                <h2 className="text-lg font-semibold mb-4">Price Change</h2>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">24h</span>
+                    <span className={coin.market_data.price_change_percentage_24h >= 0 ? 'text-gain' : 'text-loss'}>
+                      {formatPercentage(coin.market_data.price_change_percentage_24h)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">7d</span>
+                    <span className={coin.market_data.price_change_percentage_7d >= 0 ? 'text-gain' : 'text-loss'}>
+                      {formatPercentage(coin.market_data.price_change_percentage_7d)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">30d</span>
+                    <span className={coin.market_data.price_change_percentage_30d >= 0 ? 'text-gain' : 'text-loss'}>
+                      {formatPercentage(coin.market_data.price_change_percentage_30d)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">1y</span>
+                    <span className={coin.market_data.price_change_percentage_1y >= 0 ? 'text-gain' : 'text-loss'}>
+                      {formatPercentage(coin.market_data.price_change_percentage_1y)}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">7d</span>
-              <span className={coin.market_data.price_change_percentage_7d >= 0 ? 'text-gain' : 'text-loss'}>
-                {formatPercentage(coin.market_data.price_change_percentage_7d)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">30d</span>
-              <span className={coin.market_data.price_change_percentage_30d >= 0 ? 'text-gain' : 'text-loss'}>
-                {formatPercentage(coin.market_data.price_change_percentage_30d)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">1y</span>
-              <span className={coin.market_data.price_change_percentage_1y >= 0 ? 'text-gain' : 'text-loss'}>
-                {formatPercentage(coin.market_data.price_change_percentage_1y)}
-              </span>
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+          
+          <TabsContent value="patterns" className="mt-4">
+            <PatternDetector priceData={priceData} />
+          </TabsContent>
+          
+          <TabsContent value="trend" className="mt-4">
+            <MarketTrendIndicator 
+              priceData={priceData} 
+              volumeData={volumeData} 
+              sentimentScore={55} // Mock sentiment score
+            />
+          </TabsContent>
+        </Tabs>
       </div>
       
       <div className="bg-card rounded-lg p-6 border border-border/40 mb-8">
