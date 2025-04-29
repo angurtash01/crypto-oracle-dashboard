@@ -3,7 +3,7 @@ import React from 'react';
 import { MarketTrend, analyzeMarketTrend } from '../utils/marketTrends';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { Bull, Bear, CircleArrowUp, CircleArrowDown, Circle } from 'lucide-react';
+import { ArrowUp, ArrowDown, CircleArrowUp, CircleArrowDown, Circle } from 'lucide-react';
 
 interface MarketTrendIndicatorProps {
   priceData: number[];
@@ -21,9 +21,9 @@ const MarketTrendIndicator: React.FC<MarketTrendIndicatorProps> = ({
   const getTrendIcon = () => {
     switch (trend.status) {
       case 'bullish':
-        return <Bull className="h-8 w-8 text-gain mr-3" />;
+        return <ArrowUp className="h-8 w-8 text-gain mr-3" />;
       case 'bearish':
-        return <Bear className="h-8 w-8 text-loss mr-3" />;
+        return <ArrowDown className="h-8 w-8 text-loss mr-3" />;
       default:
         return <Circle className="h-8 w-8 text-muted-foreground mr-3" />;
     }
